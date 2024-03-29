@@ -14,6 +14,8 @@ from viam.resource.types import Model, ModelFamily
 from viam.utils import ValueTypes, struct_to_dict
 
 import asyncio
+import serial
+import time
 
 # Activate the logger to send log entries to app.viam.com, visible under the logs tab
 LOGGER = getLogger(__name__)
@@ -28,6 +30,7 @@ class SerialSensor(Sensor):
     MODEL: ClassVar[Model] = Model(ModelFamily("c-j-payne", "serial-sensor"), "serial")
 
     booltemp: bool = False
+    command: str = "aaa"
 
     @classmethod
     def validate_config(cls, config: ComponentConfig) -> Sequence[str]:
@@ -54,7 +57,16 @@ class SerialSensor(Sensor):
     def reconfigure(
         self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]
     ):
-        LOGGER.info('RECONFIGURING')
+        LOGGER.info('Define port and Baud Rate')
+        # Define the serial port and baud rate
+        SERIAL_PORT = '/dev/ttyACM0'  # Change this to match your Arduino's serial port
+        BAUD_RATE = 9600
+
+        # Initialize serial communication
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
+
+        # Wait for serial port to be ready
+        time.sleep(2)
 
 
     async def close(self):
@@ -90,4 +102,13 @@ class SerialSensor(Sensor):
         """
         # Ensure that all necessary credentials are available
         LOGGER.info('reading data')
+        #command="sss"
+        #await send_message(command + '\n')
         return {'reading': self.booltemp}
+
+
+    # Function to send a message to the Arduino
+    #async def send_message(message):
+        # Encode the message as bytes and send it
+    #    ser.write(message.encode())
+    #    print("Sent:", message)
