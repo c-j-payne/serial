@@ -30,6 +30,13 @@ async def main():
     serial_return_value = await serial.get_readings()
     print(f"serial get_readings return value: {serial_return_value}")
 
+    raw_dict = {"IS_TRUE?": True}
+
+
+    hello = await serial.do_command(raw_dict)
+
+    print(hello)
+
     # Don't forget to close the machine when you're done!
     await robot.close()
 
