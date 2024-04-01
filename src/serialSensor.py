@@ -48,16 +48,19 @@ class SerialSensor(Sensor):
         LOGGER.info("%s is closed.", self.name)
 
     async def send_message(self, message: str):
-        # Check if serial object exists
         if self.ser is not None:
             # Encode the message as bytes and send it
             self.ser.write(message.encode())
             LOGGER.info("Serial sent:")
             LOGGER.info(message)
+            # Read any incoming message from the Arduino
+            response = self.ser.readline().decode().strip()
+            LOGGER.info(response)
             # Wait for a short time before sending the next message
             time.sleep(1)
         else:
             LOGGER.error("Serial port is not initialized.")
+
 
     async def do_command(self, command: Mapping[str, ValueTypes], *, timeout: Optional[float] = None, **kwargs) -> Mapping[str, ValueTypes]:
         LOGGER.info(f'command: {command}')
