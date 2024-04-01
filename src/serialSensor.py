@@ -15,10 +15,9 @@ LOGGER = getLogger(__name__)
 
 class SerialSensor(Sensor):
     MODEL: ClassVar[Model] = Model(ModelFamily("c-j-payne", "serial-sensor"), "serial")
-
-    booltemp: bool = False
-    BAUD_RATE: int = 9600
-    SERIAL_PORT: str = '/dev/ttyACM0'
+    serial_baud_rate: int
+    serial_path: str 
+    serial_timeout: int
 
     # Keep a reference to the serial object at class level
     ser: Optional[serial.Serial] = None
@@ -37,43 +36,69 @@ class SerialSensor(Sensor):
         super().__init__(name)
 
     def reconfigure(self, config: ComponentConfig, dependencies: Mapping[ResourceName, ResourceBase]):
-        LOGGER.info('Define port and Baud Rate')
-        # Initialize serial communication
-        self.ser = serial.Serial(self.SERIAL_PORT, self.BAUD_RATE, timeout=1)
-        LOGGER.info(type(self.ser))
-        # Wait for serial port to be ready
-        time.sleep(2)
+        try:
+            # Extract baud rate, serial path, and timeout from the configuration
+            self.serial_baud_rate = int(config.attributes.fields.get("serial_baud_rate", {}).number_value or 9600)
+            self.serial_path = config.attributes.fields.get("serial_path", {}).string_value
+            self.serial_timeout = int(config.attributes.fields.get("serial_timeout", {}).number_value or 1)
+            
+            # Check if all required fields are present
+            if not self.serial_path:
+                LOGGER.error("Serial port configuration error: Missing 'serial_path' field")
+                return
+            
+            # Check if the specified baud rate is standard
+            standard_baud_rates = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
+            if self.serial_baud_rate not in standard_baud_rates:
+                LOGGER.error("Serial port configuration error: Invalid baud rate")
+                return
+            
+            # Print if timeout and baud rate are set to default values
+            if self.serial_baud_rate == 9600:
+                LOGGER.info("Baud rate set to default value (9600)")
+            if self.serial_timeout == 1:
+                LOGGER.info("Timeout set to default value (1)")
+            
+            # Initialize the serial port with the provided parameters
+            self.ser = serial.Serial(self.serial_path, self.serial_baud_rate, timeout=self.serial_timeout)
+            LOGGER.info("Serial port configured")
+        except KeyError:
+            LOGGER.error("Serial port configuration error: Missing required fields")
 
     async def close(self):
+        self.ser.close()
         LOGGER.info("%s is closed.", self.name)
 
     async def send_message(self, message: str):
         if self.ser is not None:
             # Encode the message as bytes and send it
             self.ser.write(message.encode())
-            LOGGER.info("Serial sent:")
-            LOGGER.info(message)
-            # Read any incoming message from the Arduino
-            response = self.ser.readline().decode().strip()
-            LOGGER.info(response)
-            # Wait for a short time before sending the next message
-            time.sleep(1)
+            LOGGER.info(f"Sent:{message}")
         else:
             LOGGER.error("Serial port is not initialized.")
 
+    async def receive_message(self) -> str:
+        if self.ser is not None:
+            # Read any incoming message 
+            response = self.ser.readline().decode().strip()
+            LOGGER.info(f"Received: {response}")
+            return response
+        else:
+            LOGGER.error("Serial port is not initialized.")
+            return ""
 
     async def do_command(self, command: Mapping[str, ValueTypes], *, timeout: Optional[float] = None, **kwargs) -> Mapping[str, ValueTypes]:
-        LOGGER.info(f'command: {command}')
-        if "IS_TRUE?" in command:
-            self.booltemp = True
-            LOGGER.info("ON")
-            message1 = "hello"
-            await self.send_message(message1)
-        else:
-            LOGGER.info("OFF")
-            self.booltemp = False
+        if not isinstance(command, dict):
+            LOGGER.error("Invalid command. Expected a dictionary.")
+            return {"executed": False}
+        for value in command.values():
+            await self.send_message(str(value))
         return {"executed": True}
 
     async def get_readings(self, extra: Optional[Dict[str, Any]] = None, **kwargs) -> Mapping[str, Any]:
-        LOGGER.info('reading data')
-        return {'reading': self.booltemp}
+        # Execute receive_message function
+        reading = await self.receive_message()
+        # Output
+        return {'reading': reading}
+
+

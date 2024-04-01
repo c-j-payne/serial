@@ -6,6 +6,9 @@ from viam.components.board import Board
 from viam.components.sensor import Sensor
 
 
+
+
+
 async def connect():
     opts = RobotClient.Options.with_api_key(
       api_key='14mia6u7kvoei46w3dbz65i3ne2w6ysr',
@@ -26,16 +29,17 @@ async def main():
     print(f"local gpio_pin_by_name return value: {local_return_value}")
   
     # serial
+
+    dict2 = {"key2":True}
+
     serial = Sensor.from_robot(robot, "serial")
-    serial_return_value = await serial.get_readings()
+    serial_return_value = await serial.get_readings(extra=dict2)
     print(f"serial get_readings return value: {serial_return_value}")
 
-    raw_dict = {"IS_TRUE?": True}
+    raw_dict = {"IS_TRUE?": True}   
+    print(raw_dict)
+    await serial.do_command(raw_dict)
 
-
-    hello = await serial.do_command(raw_dict)
-
-    print(hello)
 
     # Don't forget to close the machine when you're done!
     await robot.close()
