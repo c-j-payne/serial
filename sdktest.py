@@ -24,21 +24,28 @@ async def main():
 
     print("create serial port")
 
+    n=0
+
     try:
         # Set the maximum number of iterations for the loop
-        max_iterations = 100
-        print("trying serial")
+        max_iterations = 10000
+        #print("trying serial")
+        #enable = {"message": "e0"}
+        #await serial.do_command(enable)
+        #enable_feedback = await serial.get_readings()
+        #print(enable_feedback)
         for _ in range(max_iterations):
             # Query help
             set_velocity_command = {"message": "h"}
-            print("sending help message ", set_velocity_command)
+            #print("sending help message ", set_velocity_command)
             await serial.do_command(set_velocity_command)
-            print("sending h")
-
+            #print("sending h")
+            print(n)
+            n=n+1
             # Check controller
             reading = await serial.get_readings()
             print(reading)
-            time.sleep(0.2)
+            time.sleep(0.01)
 
     finally:
         print("close")
